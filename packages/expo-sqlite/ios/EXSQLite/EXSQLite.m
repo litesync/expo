@@ -45,6 +45,15 @@ EX_EXPORT_MODULE(ExponentSQLite);
 - (NSValue *)openDatabase:(NSString *)dbName
 {
   NSValue *cachedDB = nil;
+
+  NSString *suffix;
+  if ([dbName hasPrefix:@"file:"]) {
+    int len = [dbName length];
+    NSRange remaining = [dbName rangeOfString:@"?"];
+    suffix = [dbName substringWithRange:NSMakeRange(remaining.location, len - remaining.location)];
+    dbName = [dbName substringWithRange:NSMakeRange(5, remaining.location - 5)];
+  }
+
   NSString *path = [self pathForDatabaseName:dbName];
   if (!path) {
     return nil;
@@ -52,9 +61,13 @@ EX_EXPORT_MODULE(ExponentSQLite);
   if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
     cachedDB = [cachedDatabases objectForKey:dbName];
   }
+
   if (cachedDB == nil) {
     [cachedDatabases removeObjectForKey:dbName];
     sqlite3 *db;
+    if (suffix) {
+      path = [NSString stringWithFormat: @"file:%@%@", path, suffix];
+    }
     if (sqlite3_open([path UTF8String], &db) != SQLITE_OK) {
       return nil;
     };
